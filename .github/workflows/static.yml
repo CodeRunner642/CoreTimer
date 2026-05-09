@@ -24,11 +24,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check for npm lockfile
+        id: lockfile
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: ${{ steps.lockfile.outputs.exists == 'true' && 'npm' || '' }}
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci

@@ -26,6 +26,10 @@ npm run preview
 - Build with `npm run build`
 - Publish the `dist` directory using GitHub Pages (via Actions or `gh-pages`).
 
+## CI note
+
+GitHub Actions deployment uses `npm ci`, so `package-lock.json` must be committed and kept up to date for builds to pass.
+
 ## Notes and limitations
 - Data is stored locally in browser `localStorage` only.
 - No backend or account support.
