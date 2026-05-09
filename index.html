@@ -1,16 +1,33 @@
 <!doctype html>
-<html lang="en-GB">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#7ba7a7" />
+    <meta name="theme-color" content="#101828" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <title>Core Timer</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icons/icon-192.svg" />
+    <title>CoreTimer</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+    <main class="app">
+      <h1>CoreTimer</h1>
+      <p id="display" class="time" aria-live="polite">25:00</p>
+
+      <label for="minutes">Minutes</label>
+      <input id="minutes" type="number" min="1" max="180" inputmode="numeric" value="25" />
+
+      <div class="actions">
+        <button id="start">Start</button>
+        <button id="pause" disabled>Pause</button>
+        <button id="resume" disabled>Resume</button>
+        <button id="reset">Reset</button>
+      </div>
+
+      <p id="installHint" class="hint"></p>
+    </main>
+    <script src="app.js" defer></script>
   </body>
 </html>
