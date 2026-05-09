@@ -1,0 +1,15 @@
+:root { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #213535; background: #eef6f5; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; display: flex; justify-content: center; padding: 16px; }
+#root { width: 100%; max-width: 440px; }
+.screen { min-height: calc(100vh - 32px); }
+.card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 8px 30px rgba(32, 60, 60, 0.12); }
+h1 { font-size: 1.7rem; margin-top: 0; }
+button, select, input { width: 100%; margin-top: 10px; border-radius: 14px; border: none; padding: 12px; font-size: 1rem; }
+button { background: #7ba7a7; color: white; font-weight: 600; }
+.circle { margin: 16px auto; width: 220px; height: 220px; border-radius: 50%; background: #d8ecea; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 2rem; }
+.small { font-size: 0.9rem; opacity: 0.8; }
+.row { display: flex; justify-content: space-between; border-bottom: 1px solid #e6efef; padding: 8px 0; }
+.hint { opacity: 0.8; margin-top: 20px; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+ul { padding-left: 20px; }
