@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="CoreTimer icon">
+  <rect width="512" height="512" rx="96" fill="#101828"/>
+  <circle cx="256" cy="256" r="156" fill="none" stroke="#98A2B3" stroke-width="22"/>
+  <line x1="256" y1="256" x2="256" y2="150" stroke="#F9FAFB" stroke-width="22" stroke-linecap="round"/>
+  <line x1="256" y1="256" x2="340" y2="256" stroke="#F9FAFB" stroke-width="22" stroke-linecap="round"/>
+</svg>
