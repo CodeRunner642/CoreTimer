@@ -66,6 +66,7 @@ const defaultData = {
   level: 'beginner',
   reminderTime: '19:00',
   discreetMode: false,
+  restBetweenSets: 4,
   healthAcknowledgedVersion: 0,
 };
 
@@ -76,7 +77,12 @@ const loadData = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData;
-    return { ...defaultData, ...JSON.parse(raw) };
+    const parsed = { ...defaultData, ...JSON.parse(raw) };
+    const restBetweenSets = Number(parsed.restBetweenSets);
+    return {
+      ...parsed,
+      restBetweenSets: Number.isFinite(restBetweenSets) ? Math.min(60, Math.max(1, Math.round(restBetweenSets))) : defaultData.restBetweenSets,
+    };
   } catch {
     return defaultData;
   }
@@ -84,7 +90,7 @@ const loadData = () => {
 
 const saveData = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-const buildRoutine = (config) => {
+const buildRoutine = (config, restBetweenSets) => {
   const stepsForSet = [
     { label: 'Preparation', key: 'prep', duration: config.prep },
     { label: 'Long Kegel hold', key: 'long-kegel', duration: config.longHold },
@@ -106,7 +112,7 @@ const buildRoutine = (config) => {
   for (let set = 1; set <= config.sets; set += 1) {
     stepsForSet.forEach((step) => routine.push({ ...step, set }));
     if (set < config.sets) {
-      routine.push({ label: 'Set complete rest', key: 'rest-between-sets', duration: config.restBetweenSets, set });
+      routine.push({ label: 'Set complete rest', key: 'rest-between-sets', duration: restBetweenSets, set });
     }
   }
   return routine;
@@ -137,7 +143,7 @@ export function App() {
   const phaseEndRef = useRef(null);
   const rafRef = useRef(null);
 
-  const routine = useMemo(() => buildRoutine(levels[data.level]), [data.level]);
+  const routine = useMemo(() => buildRoutine(levels[data.level], data.restBetweenSets), [data.level, data.restBetweenSets]);
   const current = routine[stepIndex];
   const next = routine[stepIndex + 1];
   const todayDone = data.completions.includes(isoDay());
@@ -173,6 +179,9 @@ export function App() {
   const completeSession = () => {
     const today = isoDay();
     setRunning(false);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    phaseEndRef.current = null;
     setView('complete');
     setData((prev) => {
       if (prev.completions.includes(today)) return prev;
@@ -191,6 +200,8 @@ export function App() {
   };
 
   const startSession = () => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
     const durationMs = routine[0].duration * 1000;
     setStepIndex(0);
     setRemainingMs(durationMs);
@@ -201,6 +212,8 @@ export function App() {
 
   const pauseSession = () => {
     setRunning(false);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
   };
 
   const resumeSession = () => {
@@ -213,7 +226,7 @@ export function App() {
   }
 
   if (view === 'settings') {
-    return <div className="screen card"><h1>Settings</h1><label>Routine level<select value={data.level} onChange={(e)=>setData((d)=>({...d,level:e.target.value}))}>{Object.entries(levels).map(([key,v])=><option value={key} key={key}>{v.name}</option>)}</select></label><label>Reminder time<input type="time" value={data.reminderTime} onChange={(e)=>setData((d)=>({...d, reminderTime:e.target.value}))}/></label><p>iPhone reminders via web notifications may be limited. We save your daily prompt time in-app.</p><button onClick={()=>setData((d)=>({...d, discreetMode:!d.discreetMode}))}>Discreet mode: {data.discreetMode ? 'On' : 'Off'}</button><button onClick={()=>setData(defaultData)}>Reset progress</button><button onClick={()=>setView('home')}>Back</button></div>;
+    return <div className="screen card"><h1>Settings</h1><label>Routine level<select value={data.level} onChange={(e)=>setData((d)=>({...d,level:e.target.value}))}>{Object.entries(levels).map(([key,v])=><option value={key} key={key}>{v.name}</option>)}</select></label><label>Rest between sets (seconds)<input type="number" min="1" max="60" value={data.restBetweenSets} onChange={(e)=>{const next=Math.round(Number(e.target.value) || 0);setData((d)=>({...d, restBetweenSets: Math.min(60, Math.max(1, next || 1))}));}}/></label><label>Reminder time<input type="time" value={data.reminderTime} onChange={(e)=>setData((d)=>({...d, reminderTime:e.target.value}))}/></label><p>iPhone reminders via web notifications may be limited. We save your daily prompt time in-app.</p><button onClick={()=>setData((d)=>({...d, discreetMode:!d.discreetMode}))}>Discreet mode: {data.discreetMode ? 'On' : 'Off'}</button><button onClick={()=>setData(defaultData)}>Reset progress</button><button onClick={()=>setView('home')}>Back</button></div>;
   }
 
   if (view === 'history') {
@@ -232,9 +245,9 @@ export function App() {
     const isActivePhase = current && ACTIVE_PHASE_KEYS.has(current.key);
     const radius = 104;
     const circumference = 2 * Math.PI * radius;
-    const dashOffset = circumference * (1 - progress);
+    const dashOffset = circumference * progress;
 
-    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div>{isActivePhase && <svg className="progress-ring" viewBox="0 0 240 240" role="presentation" aria-hidden="true"><circle className="progress-track" cx="120" cy="120" r={radius} /><circle className="progress-indicator" cx="120" cy="120" r={radius} strokeDasharray={circumference} strokeDashoffset={dashOffset} /></svg>}</div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>{setRunning(false);setView('home')}}>End session</button></div></div>;
+    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div>{isActivePhase && <svg className="progress-ring" viewBox="0 0 240 240" role="presentation" aria-hidden="true"><circle className="progress-track" cx="120" cy="120" r={radius} /><circle className="progress-indicator" cx="120" cy="120" r={radius} transform="rotate(90 120 120)" strokeDasharray={circumference} strokeDashoffset={dashOffset} /></svg>}</div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>{setRunning(false); if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = null; phaseEndRef.current = null; setStepIndex(0); setRemainingMs(0); setView('home');}}>End session</button></div></div>;
   }
 
   if (view === 'complete') {
