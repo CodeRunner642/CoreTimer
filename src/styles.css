@@ -9,10 +9,10 @@ button, select, input { width: 100%; margin-top: 10px; border-radius: 14px; bord
 button { background: #7ba7a7; color: white; font-weight: 600; }
 .circle-wrap { position: relative; margin: 16px auto; width: 240px; height: 240px; display: grid; place-items: center; }
 .circle { width: 204px; height: 204px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ecf7f4 0%, #d9ece8 58%, #d1e7e2 100%); display: flex; align-items: center; justify-content: center; color: #1f4745; font-size: 3rem; font-weight: 600; letter-spacing: 0.01em; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -8px 24px rgba(59, 96, 93, 0.08); }
-.progress-ring { position: absolute; inset: 0; transform: rotate(-90deg); }
-.progress-track, .progress-indicator { fill: none; stroke-width: 6; }
-.progress-track { stroke: rgba(115, 160, 155, 0.2); }
-.progress-indicator { stroke: #79a9a2; stroke-linecap: round; transition: stroke-dashoffset 120ms linear; }
+.timer-ring { position: absolute; inset: 0; }
+.timer-ring-track, .timer-ring-progress { stroke-width: 6; }
+.timer-ring-track { stroke: rgba(115, 160, 155, 0.2); }
+.timer-ring-progress { stroke: #79a9a2; }
 .row { display: flex; justify-content: space-between; border-bottom: 1px solid #e6efef; padding: 8px 0; }
 .hint { opacity: 0.8; margin-top: 20px; }
 .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

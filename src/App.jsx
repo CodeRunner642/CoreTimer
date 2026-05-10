@@ -265,14 +265,20 @@ export function App() {
   }
 
   if (view === 'timer') {
-    const totalMs = currentPhaseMs || (current?.duration || 1) * 1000;
-    const progress = Math.min(1, Math.max(0, remainingMs / totalMs));
-    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const totalPhaseMs = currentPhaseMs || (current?.duration || 1) * 1000;
     const radius = 104;
     const circumference = 2 * Math.PI * radius;
+    const progress = Math.max(0, Math.min(1, remainingMs / totalPhaseMs));
     const dashOffset = circumference * (1 - progress);
+    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
 
-    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div><svg className="progress-ring" viewBox="0 0 240 240" role="presentation" aria-hidden="true"><circle className="progress-track" cx="120" cy="120" r={radius} /><circle className="progress-indicator" cx="120" cy="120" r={radius} transform="rotate(-90 120 120)" strokeDasharray={circumference} strokeDashoffset={dashOffset} /></svg></div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>resetSessionState('home')}>End session</button></div></div>;
+    if (process.env.NODE_ENV !== 'production') {
+      if (progress === 1) console.debug('Ring check: phase start', { progress, dashOffset });
+      if (progress === 0) console.debug('Ring check: phase end', { progress, dashOffset, circumference });
+      if (Math.abs(progress - 0.5) < 0.01) console.debug('Ring check: halfway', { progress, dashOffset });
+    }
+
+    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div><svg className="timer-ring" viewBox="0 0 240 240" aria-hidden="true"><circle className="timer-ring-track" cx="120" cy="120" r={radius} fill="none" /><circle className="timer-ring-progress" cx="120" cy="120" r={radius} fill="none" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" transform="rotate(-90 120 120)" /></svg></div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>resetSessionState('home')}>End session</button></div></div>;
   }
 
   if (view === 'complete') {
