@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'coreTimerData';
 const HEALTH_VERSION = 1;
@@ -69,6 +69,7 @@ const defaultData = {
   healthAcknowledgedVersion: 0,
 };
 
+const ACTIVE_PHASE_KEYS = new Set(['long-kegel', 'pulse-kegel', 'reverse-hold', 'pulse-reverse']);
 const isoDay = (d = new Date()) => d.toISOString().slice(0, 10);
 
 const loadData = () => {
@@ -131,8 +132,10 @@ export function App() {
   const [data, setData] = useState(loadData);
   const [view, setView] = useState('home');
   const [stepIndex, setStepIndex] = useState(0);
-  const [remaining, setRemaining] = useState(0);
   const [running, setRunning] = useState(false);
+  const [remainingMs, setRemainingMs] = useState(0);
+  const phaseEndRef = useRef(null);
+  const rafRef = useRef(null);
 
   const routine = useMemo(() => buildRoutine(levels[data.level]), [data.level]);
   const current = routine[stepIndex];
@@ -142,19 +145,30 @@ export function App() {
   useEffect(() => saveData(data), [data]);
 
   useEffect(() => {
-    if (view !== 'timer' || !running || !current) return;
-    if (remaining <= 0) {
-      if (stepIndex >= routine.length - 1) {
-        completeSession();
-      } else {
-        setStepIndex((v) => v + 1);
-        setRemaining(routine[stepIndex + 1].duration);
+    if (view !== 'timer' || !running || !current || !phaseEndRef.current) return;
+
+    const tick = () => {
+      const left = Math.max(0, phaseEndRef.current - performance.now());
+      setRemainingMs(left);
+      if (left <= 0) {
+        if (stepIndex >= routine.length - 1) {
+          completeSession();
+          return;
+        }
+        const nextIndex = stepIndex + 1;
+        const nextDurationMs = routine[nextIndex].duration * 1000;
+        setStepIndex(nextIndex);
+        phaseEndRef.current = performance.now() + nextDurationMs;
+        setRemainingMs(nextDurationMs);
       }
-      return;
-    }
-    const timer = setTimeout(() => setRemaining((v) => v - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [remaining, running, view, stepIndex, routine, current]);
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [view, running, current, stepIndex, routine]);
 
   const completeSession = () => {
     const today = isoDay();
@@ -177,10 +191,21 @@ export function App() {
   };
 
   const startSession = () => {
+    const durationMs = routine[0].duration * 1000;
     setStepIndex(0);
-    setRemaining(routine[0].duration);
+    setRemainingMs(durationMs);
+    phaseEndRef.current = performance.now() + durationMs;
     setRunning(true);
     setView('timer');
+  };
+
+  const pauseSession = () => {
+    setRunning(false);
+  };
+
+  const resumeSession = () => {
+    phaseEndRef.current = performance.now() + remainingMs;
+    setRunning(true);
   };
 
   if (data.healthAcknowledgedVersion < HEALTH_VERSION) {
@@ -201,9 +226,15 @@ export function App() {
   }
 
   if (view === 'timer') {
-    const total = current?.duration || 1;
-    const pct = Math.max(0, Math.round((remaining / total) * 100));
-    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle">{remaining}s<div className="small">{pct}%</div></div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={()=>setRunning(false)}>Pause</button> : <button onClick={()=>setRunning(true)}>Resume</button>}<button onClick={()=>{setRunning(false);setView('home')}}>End session</button></div></div>;
+    const totalMs = (current?.duration || 1) * 1000;
+    const progress = Math.min(1, Math.max(0, remainingMs / totalMs));
+    const remainingSeconds = Math.max(0, Math.ceil(remainingMs / 1000));
+    const isActivePhase = current && ACTIVE_PHASE_KEYS.has(current.key);
+    const radius = 104;
+    const circumference = 2 * Math.PI * radius;
+    const dashOffset = circumference * (1 - progress);
+
+    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div>{isActivePhase && <svg className="progress-ring" viewBox="0 0 240 240" role="presentation" aria-hidden="true"><circle className="progress-track" cx="120" cy="120" r={radius} /><circle className="progress-indicator" cx="120" cy="120" r={radius} strokeDasharray={circumference} strokeDashoffset={dashOffset} /></svg>}</div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>{setRunning(false);setView('home')}}>End session</button></div></div>;
   }
 
   if (view === 'complete') {
