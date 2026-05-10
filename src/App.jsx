@@ -77,7 +77,12 @@ const loadData = () => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultData;
-    return { ...defaultData, ...JSON.parse(raw) };
+    const parsed = { ...defaultData, ...JSON.parse(raw) };
+    const restBetweenSets = Number(parsed.restBetweenSets);
+    return {
+      ...parsed,
+      restBetweenSets: Number.isFinite(restBetweenSets) ? Math.min(60, Math.max(1, Math.round(restBetweenSets))) : defaultData.restBetweenSets,
+    };
   } catch {
     return defaultData;
   }
@@ -219,6 +224,8 @@ export function App() {
 
   const pauseSession = () => {
     setRunning(false);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
   };
 
   const resumeSession = () => {
