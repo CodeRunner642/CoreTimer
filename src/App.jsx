@@ -103,7 +103,13 @@ const loadData = () => {
 
 const saveData = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-const buildRoutine = (config, restBetweenSets) => {
+const getRestBetweenSets = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 4;
+  return Math.min(60, Math.max(1, Math.round(parsed)));
+};
+
+const buildRoutine = (config, restBetweenSetsSeconds) => {
   const stepsForSet = [
     { label: 'Preparation', key: 'prep', duration: config.prep },
     { label: 'Long Kegel hold', key: 'long-kegel', duration: config.longHold },
@@ -125,7 +131,7 @@ const buildRoutine = (config, restBetweenSets) => {
   for (let set = 1; set <= config.sets; set += 1) {
     stepsForSet.forEach((step) => routine.push({ ...step, set }));
     if (set < config.sets) {
-      routine.push({ label: 'Set complete rest', key: 'rest-between-sets', duration: restBetweenSets, set });
+      routine.push({ label: 'Set complete rest', key: 'rest-between-sets', duration: restBetweenSetsSeconds, set });
     }
   }
   return routine;
