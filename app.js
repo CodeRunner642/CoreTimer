@@ -9,7 +9,7 @@
   const installHint = document.getElementById('installHint');
 
   let timerId = null;
-  let state = { mode: 'idle', durationMs: 25 * 60_000, remainingMs: 25 * 60_000, endTime: null };
+  let state = { mode: 'idle', durationMs: 1 * 60_000, remainingMs: 1 * 60_000, endTime: null };
 
   const safeStorage = {
     read() {
@@ -57,7 +57,7 @@
 
   startBtn.addEventListener('click', () => {
     const min = Number(minutesInput.value);
-    const durationMs = Number.isFinite(min) ? Math.min(180, Math.max(1, min)) * 60_000 : 25 * 60_000;
+    const durationMs = Number.isFinite(min) ? Math.min(180, Math.max(1, min)) * 60_000 : 1 * 60_000;
     state = { mode: 'running', durationMs, remainingMs: durationMs, endTime: Date.now() + durationMs };
     safeStorage.write(state);
     startTicking();
@@ -82,7 +82,7 @@
 
   resetBtn.addEventListener('click', () => {
     clearInterval(timerId);
-    const durationMs = Math.min(180, Math.max(1, Number(minutesInput.value) || 25)) * 60_000;
+    const durationMs = Math.min(180, Math.max(1, Number(minutesInput.value) || 1)) * 60_000;
     state = { mode: 'idle', durationMs, remainingMs: durationMs, endTime: null };
     safeStorage.write(state);
     render();
