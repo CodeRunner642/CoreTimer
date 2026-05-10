@@ -103,6 +103,13 @@ const loadData = () => {
 
 const saveData = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
+const formatTime = (ms) => {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+};
+
 const buildRoutine = (config, restBetweenSetsSeconds) => {
   const stepsForSet = [
     { label: 'Preparation', key: 'prep', duration: config.prep },
@@ -266,6 +273,12 @@ export function App() {
 
   if (view === 'timer') {
     const totalPhaseMs = currentPhaseMs || (current?.duration || 1) * 1000;
+    const totalWorkoutMs = routine.reduce((sum, step) => sum + step.duration * 1000, 0);
+    const elapsedBeforeCurrentMs = routine
+      .slice(0, stepIndex)
+      .reduce((sum, step) => sum + step.duration * 1000, 0);
+    const elapsedInCurrentPhaseMs = Math.max(0, totalPhaseMs - remainingMs);
+    const elapsedWorkoutMs = Math.min(totalWorkoutMs, elapsedBeforeCurrentMs + elapsedInCurrentPhaseMs);
     const radius = 104;
     const circumference = 2 * Math.PI * radius;
     const progress = Math.max(0, Math.min(1, remainingMs / totalPhaseMs));
@@ -278,7 +291,7 @@ export function App() {
       if (Math.abs(progress - 0.5) < 0.01) console.debug('Ring check: halfway', { progress, dashOffset });
     }
 
-    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div><svg className="timer-ring" viewBox="0 0 240 240" aria-hidden="true"><circle className="timer-ring-track" cx="120" cy="120" r={radius} fill="none" /><circle className="timer-ring-progress" cx="120" cy="120" r={radius} fill="none" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" transform="rotate(-90 120 120)" /></svg></div><p>Set {current.set} of {levels[data.level].sets}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>resetSessionState('home')}>End session</button></div></div>;
+    return <div className="screen card"><h1>{data.discreetMode ? 'Focus timer' : current.label}</h1><div className="circle-wrap"><div className="circle">{remainingSeconds}s</div><svg className="timer-ring" viewBox="0 0 240 240" aria-hidden="true"><circle className="timer-ring-track" cx="120" cy="120" r={radius} fill="none" /><circle className="timer-ring-progress" cx="120" cy="120" r={radius} fill="none" strokeDasharray={circumference} strokeDashoffset={dashOffset} strokeLinecap="round" transform="translate(240 0) scale(-1 1) rotate(-90 120 120)" /></svg></div><p>Set {current.set} of {levels[data.level].sets}</p><p className="workout-progress">{formatTime(elapsedWorkoutMs)} / {formatTime(totalWorkoutMs)}</p><p>Next: {next ? (data.discreetMode ? 'Next phase' : next.label) : 'Session complete'}</p><div className="actions">{running ? <button onClick={pauseSession}>Pause</button> : <button onClick={resumeSession}>Resume</button>}<button onClick={()=>resetSessionState('home')}>End session</button></div></div>;
   }
 
   if (view === 'complete') {
