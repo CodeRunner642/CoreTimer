@@ -103,12 +103,6 @@ const loadData = () => {
 
 const saveData = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-const getRestBetweenSets = (value) => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return 4;
-  return Math.min(60, Math.max(1, Math.round(parsed)));
-};
-
 const buildRoutine = (config, restBetweenSetsSeconds) => {
   const stepsForSet = [
     { label: 'Preparation', key: 'prep', duration: config.prep },
