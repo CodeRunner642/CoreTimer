@@ -1,20 +1,13 @@
-:root { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #213535; background: #eef6f5; }
-* { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: flex; justify-content: center; padding: 16px; }
-#root { width: 100%; max-width: 440px; }
-.screen { min-height: calc(100vh - 32px); }
-.card { background: white; border-radius: 24px; padding: 20px; box-shadow: 0 8px 30px rgba(32, 60, 60, 0.12); }
-h1 { font-size: 1.7rem; margin-top: 0; }
-button, select, input { width: 100%; margin-top: 10px; border-radius: 14px; border: none; padding: 12px; font-size: 1rem; }
-button { background: #7ba7a7; color: white; font-weight: 600; }
-.circle-wrap { position: relative; margin: 16px auto; width: 240px; height: 240px; display: grid; place-items: center; }
-.circle { width: 204px; height: 204px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ecf7f4 0%, #d9ece8 58%, #d1e7e2 100%); display: flex; align-items: center; justify-content: center; color: #1f4745; font-size: 3rem; font-weight: 600; letter-spacing: 0.01em; box-shadow: inset 0 1px 0 rgba(255,255,255,0.8), inset 0 -8px 24px rgba(59, 96, 93, 0.08); }
-.timer-ring { position: absolute; inset: 0; }
-.timer-ring-track, .timer-ring-progress { stroke-width: 6; }
-.timer-ring-track { stroke: rgba(115, 160, 155, 0.2); }
-.timer-ring-progress { stroke: #79a9a2; }
-.row { display: flex; justify-content: space-between; border-bottom: 1px solid #e6efef; padding: 8px 0; }
-.hint { opacity: 0.8; margin-top: 20px; }
-.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.workout-progress { text-align: center; font-weight: 600; color: #3d6260; margin: 8px 0 2px; }
-ul { padding-left: 20px; }
+:root { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background:#e9e3da; color:#2c221d; }
+*{box-sizing:border-box} body{margin:0;display:flex;justify-content:center;background:#e9e3da} #root{width:100%;max-width:460px}
+.screen{min-height:100vh;padding:22px 18px 90px}.calm{background:#e9e3da}.card{background:#f2eee8;border:1px solid #d7cbbb;border-radius:24px;padding:16px;margin:14px 0}
+.kicker{letter-spacing:.14em;color:#8d7b6f;font-weight:600;font-size:.8rem}.hero{font-family:Georgia,serif;font-size:3rem;line-height:.96;margin:.3rem 0 1rem}.hero span,.accent{color:#a15332;font-style:italic;font-family:Georgia,serif}.center{text-align:center}
+button,input,select{width:100%;padding:14px 16px;border-radius:16px;border:1px solid #d7cbbb;background:#fff6;color:#2c221d;font-size:1.05rem;margin-top:10px}
+button{background:#ba6b48;color:#fff;border:none;font-weight:700}.ghost{background:transparent;color:#2c221d;border:1px solid #d7cbbb}
+.circle-wrap{display:grid;place-items:center;margin:16px auto;width:200px;height:200px}.circle-wrap.big{width:340px;height:340px}
+.circle{border-radius:999px;width:160px;height:160px;display:grid;place-items:center;font-size:4rem;color:#f7f1e8;font-family:Georgia,serif}.circle.small{width:86px;height:86px}.warm{background:radial-gradient(circle at 35% 30%,#dfc0ac,#b96f4d 70%,#a95c3a)}
+.session{display:flex;gap:16px;align-items:center} h2{margin:0;font-size:2rem;font-family:Georgia,serif} p,.subtle{color:#887a6f}.subtle{font-size:2rem;text-align:center}.stats,.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stats>div,.stats3>div{background:#f2eee8;border:1px solid #d7cbbb;border-radius:22px;padding:14px}.stats strong,.stats3 strong{display:block;font-family:Georgia,serif;font-size:2.3rem}
+.list-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid #ded2c4}.list-row span{color:#97877a}.row{display:flex;justify-content:space-between;align-items:center}
+.tabbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);max-width:460px;width:100%;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px 18px 16px;background:#e9e3da;border-top:1px solid #d7cbbb}.tabbar button{background:transparent;color:#7a6b5f;border:none;padding:10px}.tabbar .active{color:#a15332;font-weight:700}
+.progress{height:8px;background:#d8cdc0;border-radius:99px;margin-top:12px;overflow:hidden}.progress>div{height:100%;background:#ba6b48}
+label{display:block;margin-top:8px}.inline{display:flex;align-items:center;justify-content:space-between}.inline input{width:auto;transform:scale(1.4)}
