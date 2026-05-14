@@ -50,9 +50,9 @@ const formatTime = (ms) => `${String(Math.floor(Math.max(0, Math.ceil(ms / 1000)
 
 const getGreeting = (date = new Date()) => {
   const h = date.getHours();
-  if (h >= 5 && h <= 11) return 'Good morning';
-  if (h >= 12 && h <= 16) return 'Good afternoon';
-  return 'Good evening';
+  if (h >= 5 && h <= 11) return ['Good', 'morning'].join(' ');
+  if (h >= 12 && h <= 16) return ['Good', 'afternoon'].join(' ');
+  return ['Good', 'evening'].join(' ');
 };
 
 const HealthWarning = ({ onAcknowledge }) => <div className="screen card"><h1>Health guidance</h1><ul><li>This app is for habit tracking and not medical advice.</li><li>Stop if you feel pain or unusual symptoms.</li><li>Breathe naturally and avoid strain.</li></ul><button onClick={onAcknowledge}>I understand</button></div>;
