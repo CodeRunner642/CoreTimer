@@ -1,0 +1,44 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Detect available npm scripts
+        id: scripts
+        run: |
+          node -e "const s=require('./package.json').scripts||{}; const fs=require('fs'); fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_lint=${Boolean(s.lint)}\nhas_test=${Boolean(s.test)}\nhas_build=${Boolean(s.build)}\n`);"
+
+      - name: Run lint
+        if: steps.scripts.outputs.has_lint == 'true'
+        run: npm run lint
+
+      - name: Run tests
+        if: steps.scripts.outputs.has_test == 'true'
+        run: npm test
+
+      - name: Run build
+        if: steps.scripts.outputs.has_build == 'true'
+        run: npm run build
