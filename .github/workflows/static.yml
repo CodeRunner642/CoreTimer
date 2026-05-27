@@ -24,34 +24,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check for npm lockfile
-        id: lockfile
-        run: |
-          if [ -f package-lock.json ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: ${{ steps.lockfile.outputs.exists == 'true' && 'npm' || '' }}
-          cache-dependency-path: package-lock.json
+          cache: npm
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --include=dev
-          else
-            npm install --include=dev
-          fi
-
-      - name: Verify Vite is installed
-        run: |
-          npm ls vite --depth=0
-          test -x node_modules/.bin/vite
+        run: npm ci
 
       - name: Build
         run: npm run build
