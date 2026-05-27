@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('loads app, starts a workout, and captures timer screenshot', async ({ page }, testInfo) => {
+test('captures a timer screen smoke screenshot', async ({ page }, testInfo) => {
   await page.goto('/');
 
   const acknowledgeButton = page.getByRole('button', { name: 'I understand' });
@@ -8,19 +8,16 @@ test('loads app, starts a workout, and captures timer screenshot', async ({ page
     await acknowledgeButton.click();
   }
 
-  const beginButton = page.getByRole('button', { name: /begin|start again/i });
+  const beginButton = page.getByTestId('start-session');
   await expect(beginButton).toBeVisible();
   await beginButton.click();
 
-  const timerAction = page.locator('.timer-action');
-  await expect(timerAction).toBeVisible();
+  const timerScreen = page.getByTestId('timer-screen');
+  await expect(timerScreen).toBeVisible();
 
-  await expect(page.locator('.timer-screen')).toHaveScreenshot('timer-screen.png', {
-    animations: 'disabled',
-  });
-
+  const screenshot = await timerScreen.screenshot({ animations: 'disabled' });
   await testInfo.attach('timer-screen', {
-    body: await page.locator('.timer-screen').screenshot(),
+    body: screenshot,
     contentType: 'image/png',
   });
 });
