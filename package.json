@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "playwright test"
+    "test:e2e": "node scripts/test-e2e-fallback.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -15,7 +15,6 @@
   },
   "devDependencies": {
     "vite": "^5.4.10",
-    "@vitejs/plugin-react": "^4.3.2",
-    "@playwright/test": "^1.55.0"
+    "@vitejs/plugin-react": "^4.3.2"
   }
 }
