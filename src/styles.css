@@ -25,6 +25,10 @@ label{display:block;margin-top:8px}.inline{display:flex;align-items:center;justi
 .timer-next{margin:0;text-align:center;color:#8d7b6f;font-size:.95rem}
 .timer-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:auto}
 .timer-buttons button{margin-top:0;padding:12px 10px;font-size:1rem}
+.session-tracker{display:flex;gap:10px;margin-top:12px}
+.session-dot{width:34px;height:34px;border-radius:999px;border:2px solid #bcaea1;display:grid;place-items:center;color:#8d7b6f;font-weight:700;background:#f2eee8}
+.session-dot.done{background:#ba6b48;border-color:#ba6b48;color:#fff}
+.session-progress-label{margin:.5rem 0 0;font-size:.98rem;text-align:left}
 
 @media (max-width: 340px){.timer-buttons{grid-template-columns:1fr}}
 @media (max-height: 740px){

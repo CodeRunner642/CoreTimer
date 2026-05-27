@@ -27,6 +27,7 @@ const defaultData = {
   level: 'foundation', reminderTime: '09:00', discreetMode: false, restBetweenSets: 4,
   dailyNudge: true, subtleCues: true, theme: 'sand', healthAcknowledgedVersion: 0,
   displayName: '', prepareSeconds: DEFAULT_PREPARE_SECONDS,
+  sessionsPerDayTarget: 2,
   exerciseDurations: { ...DEFAULT_HOLD_SECONDS },
   includedExercises: FOUNDATION_EXERCISES.map((e) => e.id),
 };
@@ -56,6 +57,7 @@ const loadData = () => {
 };
 const saveData = (data) => localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 const formatTime = (ms) => `${String(Math.floor(Math.max(0, Math.ceil(ms / 1000)) / 60)).padStart(2, '0')}:${String(Math.max(0, Math.ceil(ms / 1000)) % 60).padStart(2, '0')}`;
+const getDaySessionCount = (completions, day) => completions.filter((d) => d === day).length;
 
 const getGreeting = (date = new Date()) => {
   const h = date.getHours();
@@ -102,7 +104,10 @@ export function App() {
 
   const current = routine[stepIndex];
   const next = routine[stepIndex + 1];
-  const todayDone = data.completions.includes(isoDay());
+  const today = isoDay();
+  const sessionsPerDayTarget = Math.max(1, parseInt(data.sessionsPerDayTarget, 10) || 2);
+  const todaySessions = getDaySessionCount(data.completions, today);
+  const todayDone = todaySessions >= sessionsPerDayTarget;
   useEffect(() => saveData(data), [data]);
 
   const cancelLoop = () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = null; };
@@ -115,15 +120,23 @@ export function App() {
       setRemainingMs(left);
       if (left <= 0) {
         if (stepIndex >= routine.length - 1) {
-          const today = isoDay();
+          const completedDay = isoDay();
+          const yesterday = isoDay(new Date(Date.now() - 86400000));
           resetSession('complete');
-          setData((prev) => prev.completions.includes(today) ? prev : {
+          setData((prev) => {
+            const previousTodaySessions = getDaySessionCount(prev.completions, completedDay);
+            const nextTodaySessions = previousTodaySessions + 1;
+            const reachedTargetNow = previousTodaySessions < sessionsPerDayTarget && nextTodaySessions >= sessionsPerDayTarget;
+            const hadYesterdayCompletion = getDaySessionCount(prev.completions, yesterday) > 0;
+            const nextStreak = reachedTargetNow ? (hadYesterdayCompletion ? prev.currentStreak + 1 : 1) : prev.currentStreak;
+            return {
             ...prev,
-            completions: [...prev.completions, today].sort(),
-            currentStreak: prev.completions.includes(isoDay(new Date(Date.now() - 86400000))) ? prev.currentStreak + 1 : 1,
-            bestStreak: Math.max(prev.bestStreak, prev.completions.includes(isoDay(new Date(Date.now() - 86400000))) ? prev.currentStreak + 1 : 1),
+            completions: [...prev.completions, completedDay].sort(),
+            currentStreak: nextStreak,
+            bestStreak: Math.max(prev.bestStreak, nextStreak),
             totalSessions: prev.totalSessions + 1,
             lastCompletedAt: new Date().toISOString(),
+            };
           });
           return;
         }
@@ -150,7 +163,11 @@ export function App() {
 
   if (view === 'complete') return <div className="screen calm"><div className="circle-wrap"><div className="circle warm" /></div><div className="kicker center">COMPLETE</div><h1 className="hero center">That's it for <span>today.</span></h1><p className="subtle center">Move gently, breathe naturally, stay consistent over perfection.</p><div className="stats3"><div><small>TIME</small><strong>{formatTime(totalMs)}</strong></div><div><small>PHASES</small><strong>{routine.length}</strong></div><div><small>STREAK</small><strong>{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'}</strong></div></div><button onClick={() => setView('home')}>Done</button><button className="ghost" onClick={() => setView('history')}>View this week</button></div>;
 
-  if (view === 'history') return <div className="screen calm"><div className="kicker">PROGRESS</div><h1 className="hero">{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'},<br /><span>steady.</span></h1><div className="stats"><div><small>STREAK</small><strong>{data.currentStreak}</strong><span>{data.currentStreak === 1 ? 'day' : 'days'}</span></div><div><small>BEST</small><strong>{data.bestStreak}</strong><span>{data.bestStreak === 1 ? 'day' : 'days'}</span></div><div><small>TOTAL</small><strong>{data.totalSessions}</strong><span>sessions</span></div></div><div className="card"><div className="kicker">RECENT</div>{[...data.completions].slice(-4).reverse().map((d) => <div key={d} className="list-row"><div><strong>{level.label}</strong><span>{d}</span></div><span>›</span></div>)}</div><nav className="tabbar"><button onClick={() => setView('home')}>Today</button><button className="active">History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
+  if (view === 'history') {
+    const completionCounts = data.completions.reduce((acc, day) => ({ ...acc, [day]: (acc[day] || 0) + 1 }), {});
+    const recentDays = Object.entries(completionCounts).sort(([a], [b]) => b.localeCompare(a)).slice(0, 4);
+    return <div className="screen calm"><div className="kicker">PROGRESS</div><h1 className="hero">{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'},<br /><span>steady.</span></h1><div className="stats"><div><small>STREAK</small><strong>{data.currentStreak}</strong><span>{data.currentStreak === 1 ? 'day' : 'days'}</span></div><div><small>BEST</small><strong>{data.bestStreak}</strong><span>{data.bestStreak === 1 ? 'day' : 'days'}</span></div><div><small>TOTAL</small><strong>{data.totalSessions}</strong><span>sessions</span></div></div><div className="card"><div className="kicker">RECENT</div>{recentDays.map(([day, count]) => <div key={day} className="list-row"><div><strong>{level.label}</strong><span>{day}</span></div><span>{count}/{sessionsPerDayTarget} sessions</span></div>)}</div><nav className="tabbar"><button onClick={() => setView('home')}>Today</button><button className="active">History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
+  }
 
   if (view === 'settings') return <div className="screen calm"><div className="kicker">PREFERENCES</div><h1 className="hero">Tune your<br /><span>routine.</span></h1><div className="card"><div className="kicker">ROUTINE</div><label>Routine level<select value={data.level} onChange={(e) => setData((d) => ({ ...d, level: e.target.value }))}>{Object.entries(ROUTINE_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label><label>Initial preparation (s)<input type="number" value={data.prepareSeconds} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, prepareSeconds: clamp(parseInt(e.target.value, 10) || DEFAULT_PREPARE_SECONDS, 1, 30) }))} /></label><label>Rest between sets (s)<input type="number" value={data.restBetweenSets} min="1" max="60" onChange={(e) => setData((d) => ({ ...d, restBetweenSets: clamp(parseInt(e.target.value, 10) || 4, 1, 60) }))} /></label><label>Short exercise duration (s)<input type="number" value={data.exerciseDurations.short} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, short: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.short, 1, 30) } }))} /></label><label>Medium exercise duration (s)<input type="number" value={data.exerciseDurations.medium} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, medium: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.medium, 1, 30) } }))} /></label><label>Long exercise duration (s)<input type="number" value={data.exerciseDurations.long} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, long: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30) } }))} /></label><label>Display name (optional)<input type="text" value={data.displayName} onChange={(e) => setData((d) => ({ ...d, displayName: e.target.value }))} /></label></div><div className="card"><div className="kicker">INCLUDED EXERCISES</div>{FOUNDATION_EXERCISES.map((exercise) => {
     const checked = data.includedExercises.includes(exercise.id);
@@ -173,5 +190,5 @@ export function App() {
 
   const greeting = getGreeting();
   const name = data.displayName?.trim();
-  return <div className="screen calm"><div className="kicker">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}</div><h1 className="hero">{greeting}{name ? ',' : ''}<br />{name ? <span>{name}.</span> : <span>there.</span>}</h1><div className="card"><div className="row"><div className="kicker">TODAY'S SESSION</div><strong>{formatTime(totalMs)}</strong></div><div className="session"><div className="circle warm small" /><div><h2>{level.label}</h2><p>{data.includedExercises.length} groups · prep {data.prepareSeconds}s</p></div></div><button data-testid="start-session" onClick={startSession}>{todayDone ? 'Start again' : 'Begin'} →</button></div><div className="card"><div className="row"><div className="kicker">CONSISTENCY</div><strong>BEST {data.bestStreak}</strong></div><h2>{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'}</h2></div><nav className="tabbar"><button className="active">Today</button><button onClick={() => setView('history')}>History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
+  return <div className="screen calm"><div className="kicker">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' }).toUpperCase()}</div><h1 className="hero">{greeting}{name ? ',' : ''}<br />{name ? <span>{name}.</span> : <span>there.</span>}</h1><div className="card"><div className="row"><div className="kicker">TODAY'S SESSION</div><strong>{formatTime(totalMs)}</strong></div><div className="session"><div className="circle warm small" /><div><h2>{level.label}</h2><p>{data.includedExercises.length} groups · prep {data.prepareSeconds}s</p></div></div><div className="session-tracker" aria-label="Today's completed sessions">{Array.from({ length: sessionsPerDayTarget }).map((_, idx) => <span key={idx} className={`session-dot ${idx < todaySessions ? 'done' : ''}`} aria-hidden="true">{idx < todaySessions ? '✓' : ''}</span>)}</div><p className="session-progress-label">{todaySessions} of {sessionsPerDayTarget} sessions completed today</p><button data-testid="start-session" onClick={startSession}>{todayDone ? 'Start again' : 'Begin'} →</button></div><div className="card"><div className="row"><div className="kicker">CONSISTENCY</div><strong>BEST {data.bestStreak}</strong></div><h2>{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'}</h2></div><nav className="tabbar"><button className="active">Today</button><button onClick={() => setView('history')}>History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
 }
