@@ -20,11 +20,14 @@ const ROUTINE_LEVELS = {
   advanced: { label: 'Advanced', multiplier: 1.6 },
 };
 
+const DEFAULT_HOLD_SECONDS = { short: 2, medium: 6, long: 10 };
+
 const defaultData = {
   completions: [], currentStreak: 0, bestStreak: 0, totalSessions: 0, lastCompletedAt: null,
   level: 'foundation', reminderTime: '09:00', discreetMode: false, restBetweenSets: 4,
   dailyNudge: true, subtleCues: true, theme: 'sand', healthAcknowledgedVersion: 0,
   displayName: '', prepareSeconds: DEFAULT_PREPARE_SECONDS,
+  exerciseDurations: { ...DEFAULT_HOLD_SECONDS },
   includedExercises: FOUNDATION_EXERCISES.map((e) => e.id),
 };
 
@@ -36,9 +39,15 @@ const loadData = () => {
     const included = Array.isArray(loaded.includedExercises) && loaded.includedExercises.length
       ? loaded.includedExercises.filter((id) => FOUNDATION_EXERCISES.some((e) => e.id === id))
       : FOUNDATION_EXERCISES.map((e) => e.id);
+    const loadedExerciseDurations = loaded.exerciseDurations || {};
     return {
       ...loaded,
       prepareSeconds: clamp(parseInt(loaded.prepareSeconds, 10) || DEFAULT_PREPARE_SECONDS, 1, 30),
+      exerciseDurations: {
+        short: clamp(parseInt(loadedExerciseDurations.short, 10) || DEFAULT_HOLD_SECONDS.short, 1, 30),
+        medium: clamp(parseInt(loadedExerciseDurations.medium, 10) || DEFAULT_HOLD_SECONDS.medium, 1, 30),
+        long: clamp(parseInt(loadedExerciseDurations.long, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30),
+      },
       includedExercises: included.length ? included : FOUNDATION_EXERCISES.map((e) => e.id),
     };
   } catch {
@@ -75,7 +84,9 @@ export function App() {
     const selectedExercises = FOUNDATION_EXERCISES.filter((exercise) => data.includedExercises.includes(exercise.id));
     selectedExercises.forEach((exercise) => {
       const scaledReps = Math.max(1, Math.round(exercise.reps * level.multiplier));
-      const scaledHoldSeconds = exercise.holdSeconds === 1 ? 1 : Math.max(1, Math.round(exercise.holdSeconds * level.multiplier));
+      const durationType = exercise.id.includes('short') ? 'short' : exercise.id.includes('long') ? 'long' : 'medium';
+      const baseHoldSeconds = clamp(Number(data.exerciseDurations?.[durationType]) || DEFAULT_HOLD_SECONDS[durationType], 1, 30);
+      const scaledHoldSeconds = Math.max(1, Math.round(baseHoldSeconds * level.multiplier));
       for (let rep = 1; rep <= scaledReps; rep += 1) {
         const actionLabel = exercise.type === 'reverse-kegel' ? 'Reverse Kegel release' : 'Kegel squeeze';
         steps.push({ label: actionLabel, duration: scaledHoldSeconds, rep, totalReps: scaledReps, groupId: exercise.id, groupLabel: exercise.label });
@@ -87,7 +98,7 @@ export function App() {
       if (setRest > 0) steps.push({ label: 'Set rest', duration: setRest, groupId: exercise.id, groupLabel: exercise.label });
     });
     return steps;
-  }, [data.prepareSeconds, data.includedExercises, data.restBetweenSets, level.multiplier]);
+  }, [data.prepareSeconds, data.includedExercises, data.restBetweenSets, data.exerciseDurations, level.multiplier]);
 
   const current = routine[stepIndex];
   const next = routine[stepIndex + 1];
@@ -141,7 +152,7 @@ export function App() {
 
   if (view === 'history') return <div className="screen calm"><div className="kicker">PROGRESS</div><h1 className="hero">{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'},<br /><span>steady.</span></h1><div className="stats"><div><small>STREAK</small><strong>{data.currentStreak}</strong><span>{data.currentStreak === 1 ? 'day' : 'days'}</span></div><div><small>BEST</small><strong>{data.bestStreak}</strong><span>{data.bestStreak === 1 ? 'day' : 'days'}</span></div><div><small>TOTAL</small><strong>{data.totalSessions}</strong><span>sessions</span></div></div><div className="card"><div className="kicker">RECENT</div>{[...data.completions].slice(-4).reverse().map((d) => <div key={d} className="list-row"><div><strong>{level.label}</strong><span>{d}</span></div><span>›</span></div>)}</div><nav className="tabbar"><button onClick={() => setView('home')}>Today</button><button className="active">History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
 
-  if (view === 'settings') return <div className="screen calm"><div className="kicker">PREFERENCES</div><h1 className="hero">Tune your<br /><span>routine.</span></h1><div className="card"><div className="kicker">ROUTINE</div><label>Routine level<select value={data.level} onChange={(e) => setData((d) => ({ ...d, level: e.target.value }))}>{Object.entries(ROUTINE_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label><label>Initial preparation (s)<input type="number" value={data.prepareSeconds} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, prepareSeconds: clamp(parseInt(e.target.value, 10) || DEFAULT_PREPARE_SECONDS, 1, 30) }))} /></label><label>Rest between sets (s)<input type="number" value={data.restBetweenSets} min="1" max="60" onChange={(e) => setData((d) => ({ ...d, restBetweenSets: clamp(parseInt(e.target.value, 10) || 4, 1, 60) }))} /></label><label>Display name (optional)<input type="text" value={data.displayName} onChange={(e) => setData((d) => ({ ...d, displayName: e.target.value }))} /></label></div><div className="card"><div className="kicker">INCLUDED EXERCISES</div>{FOUNDATION_EXERCISES.map((exercise) => {
+  if (view === 'settings') return <div className="screen calm"><div className="kicker">PREFERENCES</div><h1 className="hero">Tune your<br /><span>routine.</span></h1><div className="card"><div className="kicker">ROUTINE</div><label>Routine level<select value={data.level} onChange={(e) => setData((d) => ({ ...d, level: e.target.value }))}>{Object.entries(ROUTINE_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label><label>Initial preparation (s)<input type="number" value={data.prepareSeconds} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, prepareSeconds: clamp(parseInt(e.target.value, 10) || DEFAULT_PREPARE_SECONDS, 1, 30) }))} /></label><label>Rest between sets (s)<input type="number" value={data.restBetweenSets} min="1" max="60" onChange={(e) => setData((d) => ({ ...d, restBetweenSets: clamp(parseInt(e.target.value, 10) || 4, 1, 60) }))} /></label><label>Short exercise duration (s)<input type="number" value={data.exerciseDurations.short} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, short: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.short, 1, 30) } }))} /></label><label>Medium exercise duration (s)<input type="number" value={data.exerciseDurations.medium} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, medium: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.medium, 1, 30) } }))} /></label><label>Long exercise duration (s)<input type="number" value={data.exerciseDurations.long} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, long: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30) } }))} /></label><label>Display name (optional)<input type="text" value={data.displayName} onChange={(e) => setData((d) => ({ ...d, displayName: e.target.value }))} /></label></div><div className="card"><div className="kicker">INCLUDED EXERCISES</div>{FOUNDATION_EXERCISES.map((exercise) => {
     const checked = data.includedExercises.includes(exercise.id);
     return <label key={exercise.id} className="inline">{exercise.label}<input type="checkbox" checked={checked} onChange={() => {
       setSettingsMessage('');
