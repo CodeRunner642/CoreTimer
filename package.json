@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test:e2e": "node scripts/test-e2e-fallback.mjs"
+    "test:e2e": "npx playwright test"
   },
   "dependencies": {
     "react": "^18.3.1",
