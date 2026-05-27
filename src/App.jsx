@@ -127,8 +127,9 @@ export function App() {
             const previousTodaySessions = getDaySessionCount(prev.completions, completedDay);
             const nextTodaySessions = previousTodaySessions + 1;
             const reachedTargetNow = previousTodaySessions < sessionsPerDayTarget && nextTodaySessions >= sessionsPerDayTarget;
-            const hadYesterdayCompletion = getDaySessionCount(prev.completions, yesterday) > 0;
-            const nextStreak = reachedTargetNow ? (hadYesterdayCompletion ? prev.currentStreak + 1 : 1) : prev.currentStreak;
+            const yesterdaySessions = getDaySessionCount(prev.completions, yesterday);
+            const metYesterdayTarget = yesterdaySessions >= sessionsPerDayTarget;
+            const nextStreak = reachedTargetNow ? (metYesterdayTarget ? prev.currentStreak + 1 : 1) : prev.currentStreak;
             return {
             ...prev,
             completions: [...prev.completions, completedDay].sort(),
