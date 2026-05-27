@@ -29,7 +29,15 @@ jobs:
       - name: Detect available npm scripts
         id: scripts
         run: |
-          node -e "const s=require('./package.json').scripts||{}; const fs=require('fs'); fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_lint=${Boolean(s.lint)}\nhas_test=${Boolean(s.test)}\nhas_build=${Boolean(s.build)}\n`);"
+          node <<'NODE'
+          const fs = require('fs');
+          const pkg = require('./package.json');
+          const scripts = pkg.scripts || {};
+
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_lint=${Boolean(scripts.lint)}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_test=${Boolean(scripts.test)}\n`);
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `has_build=${Boolean(scripts.build)}\n`);
+          NODE
 
       - name: Run lint
         if: steps.scripts.outputs.has_lint == 'true'
