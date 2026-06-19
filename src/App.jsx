@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const STORAGE_KEY = 'coreTimerData';
 const HEALTH_VERSION = 1;
@@ -27,7 +27,7 @@ const defaultData = {
   level: 'foundation', reminderTime: '09:00', discreetMode: false, restBetweenSets: 4,
   dailyNudge: true, subtleCues: true, theme: 'sand', healthAcknowledgedVersion: 0,
   displayName: '', prepareSeconds: DEFAULT_PREPARE_SECONDS,
-  sessionsPerDayTarget: 2,
+  sessionsPerDayTarget: 2, keepScreenAwake: true,
   exerciseDurations: { ...DEFAULT_HOLD_SECONDS },
   includedExercises: FOUNDATION_EXERCISES.map((e) => e.id),
 };
@@ -50,6 +50,7 @@ const loadData = () => {
         long: clamp(parseInt(loadedExerciseDurations.long, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30),
       },
       includedExercises: included.length ? included : FOUNDATION_EXERCISES.map((e) => e.id),
+      keepScreenAwake: loaded.keepScreenAwake !== false,
     };
   } catch {
     return defaultData;
@@ -76,8 +77,11 @@ export function App() {
   const [remainingMs, setRemainingMs] = useState(0);
   const [currentPhaseMs, setCurrentPhaseMs] = useState(0);
   const [settingsMessage, setSettingsMessage] = useState('');
+  const [wakeLockUnsupported, setWakeLockUnsupported] = useState(() => typeof navigator !== 'undefined' && !('wakeLock' in navigator));
   const phaseEndRef = useRef(null);
   const rafRef = useRef(null);
+  const wakeLockRef = useRef(null);
+  const wakeLockRequestRef = useRef(null);
 
   const level = ROUTINE_LEVELS[data.level] || ROUTINE_LEVELS.foundation;
 
@@ -110,8 +114,69 @@ export function App() {
   const todayDone = todaySessions >= sessionsPerDayTarget;
   useEffect(() => saveData(data), [data]);
 
+  const requestWakeLock = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !('wakeLock' in navigator)) {
+      setWakeLockUnsupported(true);
+      return false;
+    }
+    if (wakeLockRef.current || wakeLockRequestRef.current) return true;
+    wakeLockRequestRef.current = navigator.wakeLock.request('screen')
+      .then((sentinel) => {
+        wakeLockRef.current = sentinel;
+        sentinel.addEventListener('release', () => {
+          if (wakeLockRef.current === sentinel) wakeLockRef.current = null;
+        });
+        return true;
+      })
+      .catch(() => {
+        wakeLockRef.current = null;
+        return false;
+      })
+      .finally(() => {
+        wakeLockRequestRef.current = null;
+      });
+    return wakeLockRequestRef.current;
+  }, []);
+
+  const releaseWakeLock = useCallback(async () => {
+    if (wakeLockRequestRef.current) {
+      await wakeLockRequestRef.current;
+    }
+    const wakeLock = wakeLockRef.current;
+    wakeLockRef.current = null;
+    if (!wakeLock) return;
+    try {
+      await wakeLock.release();
+    } catch {
+      // Wake locks may already be released by the browser.
+    }
+  }, []);
+
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible' && view === 'timer' && data.keepScreenAwake) {
+      requestWakeLock();
+    }
+  }, [data.keepScreenAwake, requestWakeLock, view]);
+
+  useEffect(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [handleVisibilityChange]);
+
+  useEffect(() => {
+    if (view === 'timer' && data.keepScreenAwake) {
+      requestWakeLock();
+      return;
+    }
+    releaseWakeLock();
+  }, [data.keepScreenAwake, releaseWakeLock, requestWakeLock, view]);
+
+  useEffect(() => () => {
+    releaseWakeLock();
+  }, [releaseWakeLock]);
+
   const cancelLoop = () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); rafRef.current = null; };
-  const resetSession = (to = 'home') => { cancelLoop(); setRunning(false); setStepIndex(0); setRemainingMs(0); setCurrentPhaseMs(0); phaseEndRef.current = null; setView(to); };
+  const resetSession = (to = 'home') => { releaseWakeLock(); cancelLoop(); setRunning(false); setStepIndex(0); setRemainingMs(0); setCurrentPhaseMs(0); phaseEndRef.current = null; setView(to); };
 
   useEffect(() => {
     if (view !== 'timer' || !running || !current || !phaseEndRef.current) return;
@@ -169,7 +234,7 @@ export function App() {
     return <div className="screen calm"><div className="kicker">PROGRESS</div><h1 className="hero">{data.currentStreak} {data.currentStreak === 1 ? 'day' : 'days'},<br /><span>steady.</span></h1><div className="stats"><div><small>STREAK</small><strong>{data.currentStreak}</strong><span>{data.currentStreak === 1 ? 'day' : 'days'}</span></div><div><small>BEST</small><strong>{data.bestStreak}</strong><span>{data.bestStreak === 1 ? 'day' : 'days'}</span></div><div><small>TOTAL</small><strong>{data.totalSessions}</strong><span>sessions</span></div></div><div className="card"><div className="kicker">RECENT</div>{recentDays.map(([day, count]) => <div key={day} className="list-row"><div><strong>{level.label}</strong><span>{day}</span></div><span>{count}/{sessionsPerDayTarget} sessions</span></div>)}</div><nav className="tabbar"><button onClick={() => setView('home')}>Today</button><button className="active">History</button><button onClick={() => setView('settings')}>Settings</button></nav></div>;
   }
 
-  if (view === 'settings') return <div className="screen calm"><div className="kicker">PREFERENCES</div><h1 className="hero">Tune your<br /><span>routine.</span></h1><div className="card"><div className="kicker">ROUTINE</div><label>Routine level<select value={data.level} onChange={(e) => setData((d) => ({ ...d, level: e.target.value }))}>{Object.entries(ROUTINE_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label><label>Initial preparation (s)<input type="number" value={data.prepareSeconds} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, prepareSeconds: clamp(parseInt(e.target.value, 10) || DEFAULT_PREPARE_SECONDS, 1, 30) }))} /></label><label>Rest between sets (s)<input type="number" value={data.restBetweenSets} min="1" max="60" onChange={(e) => setData((d) => ({ ...d, restBetweenSets: clamp(parseInt(e.target.value, 10) || 4, 1, 60) }))} /></label><label>Short exercise duration (s)<input type="number" value={data.exerciseDurations.short} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, short: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.short, 1, 30) } }))} /></label><label>Medium exercise duration (s)<input type="number" value={data.exerciseDurations.medium} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, medium: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.medium, 1, 30) } }))} /></label><label>Long exercise duration (s)<input type="number" value={data.exerciseDurations.long} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, long: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30) } }))} /></label><label>Display name (optional)<input type="text" value={data.displayName} onChange={(e) => setData((d) => ({ ...d, displayName: e.target.value }))} /></label></div><div className="card"><div className="kicker">INCLUDED EXERCISES</div>{FOUNDATION_EXERCISES.map((exercise) => {
+  if (view === 'settings') return <div className="screen calm"><div className="kicker">PREFERENCES</div><h1 className="hero">Tune your<br /><span>routine.</span></h1><div className="card"><div className="kicker">ROUTINE</div><label>Routine level<select value={data.level} onChange={(e) => setData((d) => ({ ...d, level: e.target.value }))}>{Object.entries(ROUTINE_LEVELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label><label>Initial preparation (s)<input type="number" value={data.prepareSeconds} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, prepareSeconds: clamp(parseInt(e.target.value, 10) || DEFAULT_PREPARE_SECONDS, 1, 30) }))} /></label><label>Rest between sets (s)<input type="number" value={data.restBetweenSets} min="1" max="60" onChange={(e) => setData((d) => ({ ...d, restBetweenSets: clamp(parseInt(e.target.value, 10) || 4, 1, 60) }))} /></label><label>Short exercise duration (s)<input type="number" value={data.exerciseDurations.short} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, short: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.short, 1, 30) } }))} /></label><label>Medium exercise duration (s)<input type="number" value={data.exerciseDurations.medium} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, medium: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.medium, 1, 30) } }))} /></label><label>Long exercise duration (s)<input type="number" value={data.exerciseDurations.long} min="1" max="30" onChange={(e) => setData((d) => ({ ...d, exerciseDurations: { ...d.exerciseDurations, long: clamp(parseInt(e.target.value, 10) || DEFAULT_HOLD_SECONDS.long, 1, 30) } }))} /></label><label>Display name (optional)<input type="text" value={data.displayName} onChange={(e) => setData((d) => ({ ...d, displayName: e.target.value }))} /></label></div><div className="card"><div className="kicker">DISPLAY</div><label className="inline">Keep screen awake during workouts<input type="checkbox" checked={data.keepScreenAwake} onChange={(e) => setData((d) => ({ ...d, keepScreenAwake: e.target.checked }))} /></label><p className="helper-text">Helps stop the screen dimming during a workout where supported.</p>{wakeLockUnsupported && <p className="support-note">Screen wake lock is not supported on this device/browser.</p>}</div><div className="card"><div className="kicker">INCLUDED EXERCISES</div>{FOUNDATION_EXERCISES.map((exercise) => {
     const checked = data.includedExercises.includes(exercise.id);
     return <label key={exercise.id} className="inline">{exercise.label}<input type="checkbox" checked={checked} onChange={() => {
       setSettingsMessage('');
