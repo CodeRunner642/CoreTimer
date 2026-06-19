@@ -30,6 +30,10 @@ npm run preview
 
 GitHub Actions deployment uses `npm ci`, so `package-lock.json` must be committed and kept up to date for builds to pass.
 
+## Screen wake lock
+
+Core Timer can use the Screen Wake Lock API during active workouts where the browser supports it. Wake lock requests require HTTPS, and support may vary by iOS and browser version. If wake lock is unavailable or unreliable, iPhone users can set iOS Auto-Lock to Never while using the app. The feature can be turned off in Settings.
+
 ## Notes and limitations
 - Data is stored locally in browser `localStorage` only.
 - No backend or account support.
